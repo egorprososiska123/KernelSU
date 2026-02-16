@@ -13,10 +13,10 @@ jobs:
 
       - name: Download Clang
         run: |
-          # Используем стабильный Proton Clang, который всегда доступен
           mkdir clang
-          curl -L https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz -o clang.tar.gz
-          tar -C clang --strip-components=1 -xzf clang.tar.gz
+          # Скачиваем автономный Clang 14 (стандарт для Snapdragon 695)
+          curl -L https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20220904-release/Clang-14.0.6-20220904.tar.gz -o clang.tar.gz
+          tar -C clang -xzf clang.tar.gz
 
       - name: Clone Kernel Source
         run: |
@@ -30,10 +30,11 @@ jobs:
       - name: Build Kernel
         run: |
           cd kernel
+          # Указываем путь к нашему Clang
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-          # Сборка с использованием нашего скачанного Clang
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- vendor/holi_defconfig
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu-
+          # Форсируем использование встроенного линковщика (lld), чтобы избежать ошибки libc
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip vendor/holi_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
