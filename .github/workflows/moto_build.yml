@@ -1,34 +1,38 @@
-name: Build KernelSU for Moto G84
+name: Build KernelSU for Moto G84 (Kernel 5.4)
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
-      - name: Install Tools
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential bc flex bison libssl-dev libelf-dev libncurses-dev curl git clang lld llvm
+          sudo apt install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git clang-12 lld-12 llvm-12
 
       - name: Clone Kernel Source
         run: |
+          # Клонируем ветку, которую ты использовал (она подходит для 5.4)
           git clone --depth=1 -b MMI-V1TCS35H.88-16-1 https://github.com/MotorolaMobilityLLC/kernel-msm kernel
           
       - name: Setup KernelSU
         run: |
           cd kernel
+          # Для ядра 5.4 используем стабильный скрипт установки
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Build Kernel
         run: |
           cd kernel
-          # Используем встроенный в Ubuntu Clang
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip vendor/holi_defconfig
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
+          # Используем Clang 12 (родной для ядер 5.4)
+          export PATH=/usr/lib/llvm-12/bin:$PATH
+          # Пробуем дефолтный конфиг для платформы holi (Snapdragon 695)
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 vendor/holi-perf_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-boot
-          path: kernel/out/arch/arm64/boot/Image*
+          name: kernel-Image
+          path: kernel/out/arch/arm64/boot/Image
