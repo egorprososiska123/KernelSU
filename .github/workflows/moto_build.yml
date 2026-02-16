@@ -6,11 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Build Kernel
-        uses: dabyd64/github-actions-android-kernel-builder@master
+        uses: ak774/github-actions-android-kernel-builder@main
         with:
           kernel_source: https://github.com/MotorolaMobilityLLC/kernel-msm
           kernel_branch: MMI-V1TCS35H.88-16-1
