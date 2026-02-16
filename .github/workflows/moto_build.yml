@@ -1,1 +1,26 @@
+name: Build KernelSU for Moto G84
+on:
+  workflow_dispatch: # Позволяет запускать сборку кнопкой
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Kernel
+        uses: dabyd64/github-actions-android-kernel-builder@master
+        with:
+          # Ссылка на официальные исходники Motorola
+          kernel_source: https://github.com/MotorolaMobilityLLC/kernel-msm
+          # Твой точный тег (ветка)
+          kernel_branch: MMI-V1TCS35H.88-16-1
+          # Твой проверенный конфиг
+          config: vendor/holi_defconfig
+          arch: arm64
+          # Clang r487747c — стандарт для Android 13/14/15
+          toolchain_url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
+          # Включаем KernelSU
+          ksu: true
+          ksu_version: main
