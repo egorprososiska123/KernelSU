@@ -5,16 +5,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: coolsnowwolf/ubuntu-build-service:latest
     steps:
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git
+          apt-get update
+          apt-get install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git python3
 
       - name: Download Clang
         run: |
           mkdir clang
-          # Скачиваем автономный Clang 14 (стандарт для Snapdragon 695)
           curl -L https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20220904-release/Clang-14.0.6-20220904.tar.gz -o clang.tar.gz
           tar -C clang -xzf clang.tar.gz
 
@@ -30,11 +31,10 @@ jobs:
       - name: Build Kernel
         run: |
           cd kernel
-          # Указываем путь к нашему Clang
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-          # Форсируем использование встроенного линковщика (lld), чтобы избежать ошибки libc
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip vendor/holi_defconfig
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
+          # Сборка через встроенный LLVM
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 vendor/holi_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
