@@ -25,10 +25,10 @@ jobs:
           cd kernel
           export PATH=/usr/lib/llvm-12/bin:$PATH
           
-          # 1. Генерируем конфиг (именно тот defconfig, который ты нашел)
+          # Генерируем конфиг (тот самый defconfig)
           make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 defconfig
           
-          # 2. Сама сборка. Добавили KCFLAGS="-w", чтобы проигнорировать ту самую ошибку
+          # Сборка с игнорированием ошибок (KCFLAGS="-w"), чтобы пройти fs/built-in.a
           make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 KCFLAGS="-w"
 
       - name: Upload Artifact
