@@ -24,9 +24,11 @@ jobs:
         run: |
           cd kernel
           export PATH=/usr/lib/llvm-12/bin:$PATH
-          # Пробуем найти конфиг автоматом, если holi-perf не сработает
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 vendor/holi-perf_defconfig || make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 vendor/holi_defconfig
           
+          # Настройка конфига (используем тот самый defconfig)
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 defconfig
+          
+          # Сборка
           make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12
 
       - name: Upload Artifact
