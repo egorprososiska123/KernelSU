@@ -6,13 +6,35 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev
+
+      - name: Download Clang
+        run: |
+          mkdir clang
+          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz -O clang.tar.gz
+          tar -C clang -xzf clang.tar.gz
+
+      - name: Clone Kernel Source
+        run: |
+          git clone --depth=1 -b MMI-V1TCS35H.88-16-1 https://github.com/MotorolaMobilityLLC/kernel-msm kernel
+          
+      - name: Setup KernelSU
+        run: |
+          cd kernel
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+
       - name: Build Kernel
-        uses: ak774/github-actions-android-kernel-builder@main
+        run: |
+          cd kernel
+          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- vendor/holi_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu-
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          kernel_source: https://github.com/MotorolaMobilityLLC/kernel-msm
-          kernel_branch: MMI-V1TCS35H.88-16-1
-          config: vendor/holi_defconfig
-          arch: arm64
-          toolchain_url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          ksu: true
-          ksu_version: main
+          name: kernel-boot
+          path: kernel/out/arch/arm64/boot/Image*
