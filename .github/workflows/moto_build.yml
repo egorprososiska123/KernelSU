@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Kernel
-        uses: tiann/KernelSU
+        uses: dabyd64/github-actions-android-kernel-builder@master
         with:
           kernel_source: https://github.com/MotorolaMobilityLLC/kernel-msm
           kernel_branch: MMI-V1TCS35H.88-16-1
