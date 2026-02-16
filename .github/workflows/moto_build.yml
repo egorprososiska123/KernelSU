@@ -11,12 +11,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git
 
-      - name: Download Toolchain
+      - name: Download Clang
         run: |
           mkdir clang
-          # Скачиваем официальный стабильный Toolchain от Google (AOSP)
-          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main-kernel-build-2024/clang-r497332.tar.gz
-          tar -C clang -xzf clang-r497332.tar.gz
+          curl -L https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20220904-release/Clang-14.0.6-20220904.tar.gz -o clang.tar.gz
+          tar -C clang -xzf clang.tar.gz
 
       - name: Clone Kernel Source
         run: |
@@ -30,11 +29,10 @@ jobs:
       - name: Build Kernel
         run: |
           cd kernel
-          # Добавляем наш скачанный Clang в путь
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-          # Запускаем сборку с использованием только нашего Clang
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 vendor/holi_defconfig
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1
+          # Используем расширенные флаги для совместимости
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- vendor/holi_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=clang CLANG_TRIPLE=aarch64-linux-gnu-
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
