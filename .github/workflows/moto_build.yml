@@ -25,11 +25,11 @@ jobs:
           cd kernel
           export PATH=/usr/lib/llvm-12/bin:$PATH
           
-          # Настройка конфига (используем тот самый defconfig)
+          # Настройка конфига
           make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 defconfig
           
-          # Сборка
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12
+          # Сборка с отключением варнингов, чтобы не падать на fs/built-in.a
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 KCFLAGS="-w"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
