@@ -4,20 +4,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    container:
-      image: coolsnowwolf/ubuntu-build-service:latest
+    runs-on: ubuntu-22.04
     steps:
-      - name: Install dependencies
+      - name: Install Tools
         run: |
-          apt-get update
-          apt-get install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git python3
-
-      - name: Download Clang
-        run: |
-          mkdir clang
-          curl -L https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20220904-release/Clang-14.0.6-20220904.tar.gz -o clang.tar.gz
-          tar -C clang -xzf clang.tar.gz
+          sudo apt update
+          sudo apt install -y head checkinstall build-essential bc subversion ca-certificates curl w3m wget binutils-aarch64-linux-gnu libncurses5-dev libssl-dev flex bison
+          sudo apt install -y clang-14 lld-14 llvm-14
 
       - name: Clone Kernel Source
         run: |
@@ -31,10 +24,10 @@ jobs:
       - name: Build Kernel
         run: |
           cd kernel
-          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-          # Сборка через встроенный LLVM
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 vendor/holi_defconfig
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1
+          # Используем системный Clang 14 и LLD
+          export PATH=/usr/lib/llvm-14/bin:$PATH
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 vendor/holi_defconfig
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
