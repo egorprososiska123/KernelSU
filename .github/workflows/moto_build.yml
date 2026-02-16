@@ -14,8 +14,8 @@ jobs:
       - name: Download Clang
         run: |
           mkdir clang
-          curl -L https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz -o clang.tar.gz
-          tar -C clang -xzf clang.tar.gz
+          curl -LO https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz
+          tar -C clang --strip-components=1 -xzf master.tar.gz
 
       - name: Clone Kernel Source
         run: |
