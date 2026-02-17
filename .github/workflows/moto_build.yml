@@ -25,21 +25,22 @@ jobs:
           cd kernel
           export PATH=/usr/lib/llvm-14/bin:$PATH
           
-          # Полная очистка
-          make ARCH=arm64 O=out clean
-          make ARCH=arm64 O=out mrproper
-          
-          # Генерируем конфиг
+          # 1. Генерируем конфиг
           make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 defconfig
           
-          # Пакет фиксов (отключаем всё, что вешало билд)
+          # 2. ИСПРАВЛЯЕМ КОД (Хирургия)
+          # Исправляем ошибку taskstats на 870 строке
+          sed -i 's/#elif/#else/g' kernel/taskstats.c
+          
+          # 3. КОРРЕКТИРУЕМ КОНФИГ
           sed -i 's/CONFIG_QCS_GCC_404=y/CONFIG_QCS_GCC_404=n/g' out/.config
           sed -i 's/CONFIG_MSM_GCC_8994=y/CONFIG_MSM_GCC_8994=n/g' out/.config
           sed -i 's/CONFIG_MSM_MMCC_8996=y/CONFIG_MSM_MMCC_8996=n/g' out/.config
           sed -i 's/CONFIG_I2C_QCOM_GENI=y/CONFIG_I2C_QCOM_GENI=n/g' out/.config
+          sed -i 's/CONFIG_XEN=y/CONFIG_XEN=n/g' out/.config
           sed -i 's/CONFIG_INCFS=y/CONFIG_INCFS=n/g' out/.config
           
-          # Сборка
+          # 4. СБОРКА
           make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 KCFLAGS="-w -Wno-error -Wno-return-type" Image.gz
 
       - name: Upload Kernel Only
