@@ -1,15 +1,15 @@
-name: Build KernelSU Moto G84 Final
+name: Build KernelSU Moto G84 Modern
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git clang-12 lld-12 llvm-12 binutils-aarch64-linux-gnu
+          sudo apt install -y bc build-essential flex bison libssl-dev libelf-dev libncurses-dev curl git clang-14 lld-14 llvm-14 binutils-aarch64-linux-gnu
 
       - name: Clone Kernel Source
         run: |
@@ -18,27 +18,30 @@ jobs:
       - name: Setup KernelSU
         run: |
           cd kernel
-          # Ставим KernelSU через официальный скрипт
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Build Kernel
         run: |
           cd kernel
-          export PATH=/usr/lib/llvm-12/bin:$PATH
+          # Прописываем пути к 14-му клангу
+          export PATH=/usr/lib/llvm-14/bin:$PATH
           
-          # Полная очистка перед стартом
-          make ARCH=arm64 O=out clean
-          make ARCH=arm64 O=out mrproper
+          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 defconfig
           
-          # Генерируем конфиг
-          make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 defconfig
+          # Отключаем всё, что мешало в прошлый раз
+          sed -i 's/CONFIG_QCS_GCC_404=y/CONFIG_QCS_GCC_404=n/g' out/.config
+          sed -i 's/CONFIG_MSM_GCC_8994=y/CONFIG_MSM_GCC_8994=n/g' out/.config
+          sed -i 's/CONFIG_MSM_MMCC_8996=y/CONFIG_MSM_MMCC_8996=n/g' out/.config
           
-          # Сборка с максимальным игнором ошибок
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-12 LD=ld.lld-12 NM=llvm-nm-12 OBJCOPY=llvm-objcopy-12 OBJDUMP=llvm-objdump-12 STRIP=llvm-strip-12 KCFLAGS="-w -Wno-error"
+          # Сама сборка с игнорированием ворнингов
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 KCFLAGS="-w -Wno-error"
 
       - name: Upload Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-Image
-          path: kernel/out/arch/arm64/boot/Image*
+          name: KernelSU-G84
+          path: |
+            kernel/out/arch/arm64/boot/Image
+            kernel/out/arch/arm64/boot/Image.gz
+            kernel/out/arch/arm64/boot/dtbo.img
