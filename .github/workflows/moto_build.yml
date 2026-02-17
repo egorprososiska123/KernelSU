@@ -1,4 +1,4 @@
-name: Build KernelSU Moto G84 (No DTBO)
+name: Build KernelSU Moto G84
 on:
   workflow_dispatch:
 
@@ -25,25 +25,26 @@ jobs:
           cd kernel
           export PATH=/usr/lib/llvm-14/bin:$PATH
           
-          # 1. Генерируем конфиг
+          # 1. Базовый конфиг
           make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 defconfig
           
-          # 2. ПОЧИНКА КОДА (Хирургия)
+          # 2. ЖЕСТКАЯ КОРРЕКЦИЯ КОДА (Чтобы не было No bootable slot)
+          # Исправляем taskstats
           sed -i 's/#elif/#else/g' kernel/taskstats.c
-          
-          # 3. МИНИМАЛЬНЫЕ ПРАВКИ КОНФИГА
-          # Оставляем только отключение Xen, остальное не трогаем для линковки
+          # Отключаем Xen и отладку, которая вешает загрузку
           sed -i 's/CONFIG_XEN=y/CONFIG_XEN=n/g' out/.config
+          sed -i 's/CONFIG_DEBUG_KERNEL=y/CONFIG_DEBUG_KERNEL=n/g' out/.config
           
-          # 4. СБОРКА С МАКСИМАЛЬНЫМ ИГНОРИРОВАНИЕМ ОШИБОК
-          # Добавляем -fno-builtin и подавляем варнинги
-          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 KCFLAGS="-w -Wno-error -fno-builtin" Image.gz
+          # 3. СБОРКА
+          # Используем -fno-integrated-as для лучшей совместимости с кодом Motorola
+          make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- \
+            CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 \
+            KCFLAGS="-w -Wno-error -fno-builtin -fno-stack-protector -fno-integrated-as" \
+            Image.gz
 
       - name: Upload Kernel Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: KernelSU-Image-G84
-          path: |
-            kernel/out/arch/arm64/boot/Image
-            kernel/out/arch/arm64/boot/Image.gz
+          path: kernel/out/arch/arm64/boot/Image.gz
