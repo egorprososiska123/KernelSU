@@ -28,20 +28,20 @@ jobs:
           # 1. Генерируем конфиг
           make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 defconfig
           
-          # 2. ИСПРАВЛЕНИЕ ВСЕХ ТРЕХ ОШИБОК (Хирургия кода)
-          # Ошибка 1: taskstats.c (строка 870)
+          # 2. ИСПРАВЛЕНИЕ ОШИБОК ИЗ ТВОИХ СКРИНОВ
           sed -i 's/#elif/#else/g' kernel/taskstats.c
           
-          # Ошибки 2 и 3: gcc-qcs404.c (P_GPLL0_OUT_AUX и P_XO)
-          # Мы добавим определения прямо в заголовочный файл, чтобы компилятор их увидел
+          # Фикс P_XO и P_GPLL0_OUT_AUX (скрин 2114)
           echo "#define P_GPLL0_OUT_AUX 0" >> include/dt-bindings/clock/qcom,gcc-qcs404.h
           echo "#define P_XO 0" >> include/dt-bindings/clock/qcom,gcc-qcs404.h
           
-          # Отключаем Xen, который ломал билд на 3400+
-          sed -i 's/CONFIG_XEN=y/CONFIG_XEN=n/g' out/.config
+          # Фикс undefined symbol (скрин 3940 - линковка)
+          # Принудительно включаем DRM и SCM в конфиг, чтобы они были доступны линковщику
+          echo "CONFIG_DRM_PANEL=y" >> out/.config
+          echo "CONFIG_QCOM_SCM=y" >> out/.config
+          echo "CONFIG_XEN=n" >> out/.config
 
-          # 3. СБОРКА С ПОВЫШЕННОЙ СОВМЕСТИМОСТЬЮ
-          # Добавляем -fno-integrated-as, чтобы ядро было "загружаемым" (bootable)
+          # 3. СБОРКА
           make -j$(nproc --all) ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- \
             CC=clang-14 LD=ld.lld-14 NM=llvm-nm-14 OBJCOPY=llvm-objcopy-14 OBJDUMP=llvm-objdump-14 STRIP=llvm-strip-14 \
             KCFLAGS="-w -Wno-error -fno-builtin -fno-stack-protector -fno-integrated-as" \
