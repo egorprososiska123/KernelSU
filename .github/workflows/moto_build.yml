@@ -16,35 +16,35 @@ jobs:
 
       - name: Clone Official Motorola Kernel
         run: |
-          # Клонируем по твоему конкретному тегу
-          git clone https://github.com/MotorolaMobilityLLC/kernel-msm.git --depth=1 -b MMI-V1TCS35H.88.16.1 kernel
+          # Прямое клонирование без лишних папок
+          rm -rf kernel-msm
+          git clone https://github.com/MotorolaMobilityLLC/kernel-msm
 
       - name: Install KernelSU
         run: |
-          cd kernel
-          # Патчим ядро 5.4 под KernelSU
+          cd kernel-msm
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Download AOSP Clang
         run: |
-          mkdir clang
+          mkdir -p clang
           cd clang
-          # Для Android 15 лучше всего подходит Clang r487747c
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
           tar -xf clang-r487747c.tar.gz
 
       - name: Build Kernel
         run: |
           export PATH=$(pwd)/clang/bin:$PATH
-          cd kernel
+          cd kernel-msm
+          
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           
-          # Конфиг для твоего Moto G84 (bangkk)
+          # Твой конфиг для Moto G84
           make O=out vendor/bangkk_defconfig
           
-          # Сборка со всеми современными флагами
+          # Компиляция
           make -j$(nproc --all) O=out \
                       CC=clang \
                       CLANG_TRIPLE=aarch64-linux-gnu- \
@@ -60,5 +60,5 @@ jobs:
       - name: Upload Kernel Image
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Android15-KernelSU
-          path: kernel/out/arch/arm64/boot/Image
+          name: Official-Kernel-Android15
+          path: kernel-msm/out/arch/arm64/boot/Image
