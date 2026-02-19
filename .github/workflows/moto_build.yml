@@ -1,10 +1,10 @@
-name: Build LineageOS Kernel (Android 16)
+name: Build Moto G84 Kernel (Image.gz Only)
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -12,40 +12,52 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm git wget
+          sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm git wget libarchive-tools python3 python-is-python3
 
-      - name: Clone LineageOS Kernel
+      - name: Clone Kernel Source
         run: |
-          rm -rf kernel-source
-          # Клонируем ветку для Android 15/16 (bangkk)
-          git clone --depth=1 --single-branch -b lineage-22.1 https://github.com/LineageOS/android_kernel_motorola_sm6375.git kernel-source
+          # Клонируем ветку Lineage 23.2 для твоего процессора
+          git clone --depth=1 https://github.com/mikeNG/android_kernel_motorola_sm6375.git -b lineage-23.2 kernel-source
 
-      - name: Install KernelSU
+      - name: Setup KernelSU
         run: |
           cd kernel-source
+          # Внедряем KernelSU
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-      - name: Setup Clang
+      - name: Setup Clang (AOSP)
         run: |
           mkdir -p clang
-          # Качаем напрямую архив, чтобы не мучиться с git clone
+          # Стабильный Clang для ядер 5.4
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          tar -xf clang-r487747c.tar.gz -C clang
+          tar -C clang/ -xzf clang-r487747c.tar.gz
 
       - name: Build Kernel
         run: |
-          # Прописываем путь к скачанному Clang
           export PATH=$(pwd)/clang/bin:$PATH
           cd kernel-source
           
           export ARCH=arm64
           export LLVM=1
           export LLVM_IAS=1
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
           
-          # 1. Генерируем конфиг (явно указываем LLVM, чтобы не искал GCC)
-          make O=out vendor/bangkk_defconfig CC=clang LLVM=1 LLVM_IAS=1
+          mkdir -p out
           
-          # 2. Сама сборка со всеми флагами LLVM
+          # 1. Генерируем конфиг
+          make O=out vendor/holi-qgki_defconfig
+          
+          # 2. Включаем KSU и Kprobes
+          ./scripts/config --file out/.config -e KSU
+          ./scripts/config --file out/.config -e OVERLAY_FS
+          ./scripts/config --file out/.config -e KPROBES
+          ./scripts/config --file out/.config -e KPROBE_EVENTS
+          
+          make O=out olddefconfig
+
+          # 3. Сборка только ядра
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
@@ -53,11 +65,10 @@ jobs:
                       NM=llvm-nm \
                       OBJCOPY=llvm-objcopy \
                       OBJDUMP=llvm-objdump \
-                      STRIP=llvm-strip \
-                      LLVM=1 \
-                      LLVM_IAS=1 \
-                      CROSS_COMPILE=aarch64-linux-gnu- \
-                      CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+                      STRIP=llvm-strip
 
-      - name: Upload Image
-        uses: actions/upload-artifact
+      - name: Upload Kernel Only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moto-G84-KSU-Kernel
+          path: kernel-source/out/arch/arm64/boot/Image.gz
