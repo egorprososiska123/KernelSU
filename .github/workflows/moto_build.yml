@@ -1,4 +1,4 @@
-name: Build Moto G84 (No-Auth Clone)
+name: Build LineageOS Kernel
 on:
   workflow_dispatch:
 
@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout Workflow
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Dependencies
@@ -14,19 +14,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm git wget libarchive-tools python3 python-is-python3
 
-      - name: Clone Kernel Source (Safe Way)
+      - name: Clone Kernel Source
         run: |
-          # Клонируем без лишних расширений и протоколов
-          git clone --depth=1 https://github.com/mikeNG/android_kernel_motorola_sm6375 -b lineage-23.2 kernel-source
+          # Клонируем ядро без .git в конце и без запросов авторизации
+          git clone --depth=1 https://github.com/LineageOS/android_kernel_motorola_sm6375 -b lineage-23.2 kernel-source
 
       - name: Setup KernelSU
         run: |
           cd kernel-source
+          # Установка KernelSU
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Setup Clang
         run: |
           mkdir -p clang
+          # Используем стабильную версию Clang для ядер 5.4
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
           tar -C clang/ -xzf clang-r487747c.tar.gz
 
@@ -44,10 +46,10 @@ jobs:
           
           mkdir -p out
           
-          # Наш конфиг
+          # 1. Применяем конфиг для Moto G84 (Holi)
           make O=out vendor/holi-qgki_defconfig
           
-          # Включаем KSU
+          # 2. Включаем необходимые модули для KernelSU
           ./scripts/config --file out/.config -e KSU
           ./scripts/config --file out/.config -e OVERLAY_FS
           ./scripts/config --file out/.config -e KPROBES
@@ -55,7 +57,7 @@ jobs:
           
           make O=out olddefconfig
 
-          # Компиляция ядра
+          # 3. Сама сборка
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
@@ -65,8 +67,8 @@ jobs:
                       OBJDUMP=llvm-objdump \
                       STRIP=llvm-strip
 
-      - name: Upload Kernel
+      - name: Upload Image.gz
         uses: actions/upload-artifact@v4
         with:
-          name: Image-KSU
+          name: Kernel-LineageOS-23.2
           path: kernel-source/out/arch/arm64/boot/Image.gz
