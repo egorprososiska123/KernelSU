@@ -1,4 +1,4 @@
-name: Build Moto G84 Kernel (Image.gz Only)
+name: Build Moto G84 Kernel (Fixed Clone)
 on:
   workflow_dispatch:
 
@@ -16,19 +16,22 @@ jobs:
 
       - name: Clone Kernel Source
         run: |
-          # Клонируем ветку Lineage 23.2 для твоего процессора
-          git clone --depth=1 https://github.com/mikeNG/android_kernel_motorola_sm6375.git -b lineage-23.2 kernel-source
+          # Настраиваем git, чтобы он не запрашивал учетные данные
+          git config --global url."https://github.com/".insteadOf git@github.com:
+          git config --global url."https://".insteadOf git://
+          
+          # Клонируем с явным указанием ветки и полной ссылкой
+          git clone --depth=1 --single-branch https://github.com/mikeNG/android_kernel_motorola_sm6375.git -b lineage-23.2 kernel-source
 
       - name: Setup KernelSU
         run: |
           cd kernel-source
-          # Внедряем KernelSU
+          # Внедряем KernelSU через официальный скрипт
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Setup Clang (AOSP)
         run: |
           mkdir -p clang
-          # Стабильный Clang для ядер 5.4
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
           tar -C clang/ -xzf clang-r487747c.tar.gz
 
@@ -46,10 +49,10 @@ jobs:
           
           mkdir -p out
           
-          # 1. Генерируем конфиг
+          # 1. Используем найденный нами дефконфиг
           make O=out vendor/holi-qgki_defconfig
           
-          # 2. Включаем KSU и Kprobes
+          # 2. Включаем KSU и необходимые параметры ядра
           ./scripts/config --file out/.config -e KSU
           ./scripts/config --file out/.config -e OVERLAY_FS
           ./scripts/config --file out/.config -e KPROBES
@@ -57,7 +60,7 @@ jobs:
           
           make O=out olddefconfig
 
-          # 3. Сборка только ядра
+          # 3. Компиляция
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
@@ -67,8 +70,8 @@ jobs:
                       OBJDUMP=llvm-objdump \
                       STRIP=llvm-strip
 
-      - name: Upload Kernel Only
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Moto-G84-KSU-Kernel
+          name: Moto-G84-Kernel-KSU
           path: kernel-source/out/arch/arm64/boot/Image.gz
