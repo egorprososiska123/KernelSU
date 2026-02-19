@@ -1,4 +1,4 @@
-name: Build Moto G84 Kernel (Fixed Clone)
+name: Build Moto G84 (No-Auth Clone)
 on:
   workflow_dispatch:
 
@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
+      - name: Checkout Workflow
         uses: actions/checkout@v4
 
       - name: Install Dependencies
@@ -14,22 +14,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm git wget libarchive-tools python3 python-is-python3
 
-      - name: Clone Kernel Source
+      - name: Clone Kernel Source (Safe Way)
         run: |
-          # Настраиваем git, чтобы он не запрашивал учетные данные
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git config --global url."https://".insteadOf git://
-          
-          # Клонируем с явным указанием ветки и полной ссылкой
-          git clone --depth=1 --single-branch https://github.com/mikeNG/android_kernel_motorola_sm6375.git -b lineage-23.2 kernel-source
+          # Клонируем без лишних расширений и протоколов
+          git clone --depth=1 https://github.com/mikeNG/android_kernel_motorola_sm6375 -b lineage-23.2 kernel-source
 
       - name: Setup KernelSU
         run: |
           cd kernel-source
-          # Внедряем KernelSU через официальный скрипт
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-      - name: Setup Clang (AOSP)
+      - name: Setup Clang
         run: |
           mkdir -p clang
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
@@ -49,10 +44,10 @@ jobs:
           
           mkdir -p out
           
-          # 1. Используем найденный нами дефконфиг
+          # Наш конфиг
           make O=out vendor/holi-qgki_defconfig
           
-          # 2. Включаем KSU и необходимые параметры ядра
+          # Включаем KSU
           ./scripts/config --file out/.config -e KSU
           ./scripts/config --file out/.config -e OVERLAY_FS
           ./scripts/config --file out/.config -e KPROBES
@@ -60,7 +55,7 @@ jobs:
           
           make O=out olddefconfig
 
-          # 3. Компиляция
+          # Компиляция ядра
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
@@ -70,8 +65,8 @@ jobs:
                       OBJDUMP=llvm-objdump \
                       STRIP=llvm-strip
 
-      - name: Upload Artifact
+      - name: Upload Kernel
         uses: actions/upload-artifact@v4
         with:
-          name: Moto-G84-Kernel-KSU
+          name: Image-KSU
           path: kernel-source/out/arch/arm64/boot/Image.gz
