@@ -1,4 +1,4 @@
-name: Build LineageOS Kernel with KernelSU
+name: Build LineageOS Kernel (Android 16)
 on:
   workflow_dispatch:
 
@@ -16,21 +16,21 @@ jobs:
 
       - name: Clone LineageOS Kernel
         run: |
-          # Очистка и клонирование исходников LineageOS для G84
+          # Полная очистка перед клонированием
           rm -rf kernel-source
-          git clone --depth=1 --single-branch -b lineage-21 https://github.com/LineageOS/android_kernel_motorola_sm6375.git kernel-source
+          # Клонируем ветку для Android 15/16
+          git clone --depth=1 --single-branch -b lineage-22.1 https://github.com/LineageOS/android_kernel_motorola_sm6375.git kernel-source
 
       - name: Install KernelSU
         run: |
           cd kernel-source
-          # Ставим KernelSU
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Download AOSP Clang
         run: |
           mkdir -p clang
           cd clang
-          # Стабильный компилятор Google
+          # Clang r487747c — стандарт для новых версий Lineage
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
           tar -xf clang-r487747c.tar.gz
 
@@ -42,10 +42,9 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           
-          # Конфиг bangkk
+          # Конфиг bangkk для Snapdragon 695
           make O=out vendor/bangkk_defconfig
           
-          # Сама сборка
           make -j$(nproc --all) O=out \
                       CC=clang \
                       CLANG_TRIPLE=aarch64-linux-gnu- \
@@ -61,5 +60,5 @@ jobs:
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Lineage-KSU
+          name: Kernel-Lineage-23-Android16
           path: kernel-source/out/arch/arm64/boot/Image
