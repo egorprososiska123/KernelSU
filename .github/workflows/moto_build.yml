@@ -16,24 +16,30 @@ jobs:
 
       - name: Clone Kernel Source
         run: |
-          # Клонируем ядро без .git в конце и без запросов авторизации
+          # Используем правильную ссылку на репозиторий для sm6375 (holi)
           git clone --depth=1 https://github.com/LineageOS/android_kernel_motorola_sm6375 -b lineage-23.2 kernel-source
 
       - name: Setup KernelSU
         run: |
           cd kernel-source
-          # Установка KernelSU
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Setup Clang
         run: |
           mkdir -p clang
-          # Используем стабильную версию Clang для ядер 5.4
+          # Прямая ссылка на скачивание стабильного Clang r487747c
+          cd clang
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          tar -C clang/ -xzf clang-r487747c.tar.gz
+          # Если wget падает, используем curl как запасной вариант
+          if [ ! -f clang-r487747c.tar.gz ]; then
+            curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
+          fi
+          tar -xzf clang-r487747c.tar.gz
+          cd ..
 
       - name: Build Kernel
         run: |
+          # Добавляем Clang в PATH
           export PATH=$(pwd)/clang/bin:$PATH
           cd kernel-source
           
@@ -46,10 +52,10 @@ jobs:
           
           mkdir -p out
           
-          # 1. Применяем конфиг для Moto G84 (Holi)
+          # 1. Применяем конфиг
           make O=out vendor/holi-qgki_defconfig
           
-          # 2. Включаем необходимые модули для KernelSU
+          # 2. Включаем KSU
           ./scripts/config --file out/.config -e KSU
           ./scripts/config --file out/.config -e OVERLAY_FS
           ./scripts/config --file out/.config -e KPROBES
@@ -57,7 +63,7 @@ jobs:
           
           make O=out olddefconfig
 
-          # 3. Сама сборка
+          # 3. Сборка
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
