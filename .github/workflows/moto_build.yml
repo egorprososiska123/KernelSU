@@ -16,9 +16,8 @@ jobs:
 
       - name: Clone LineageOS Kernel
         run: |
-          # Полная очистка перед клонированием
           rm -rf kernel-source
-          # Клонируем ветку для Android 15/16
+          # Ветка для Android 15/16
           git clone --depth=1 --single-branch -b lineage-22.1 https://github.com/LineageOS/android_kernel_motorola_sm6375.git kernel-source
 
       - name: Install KernelSU
@@ -26,13 +25,14 @@ jobs:
           cd kernel-source
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-      - name: Download AOSP Clang
+      - name: Setup Clang (The reliable way)
         run: |
+          # Вместо битой ссылки клонируем стабильный Clang из репозиториев Google
           mkdir -p clang
-          cd clang
-          # Clang r487747c — стандарт для новых версий Lineage
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          tar -xf clang-r487747c.tar.gz
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang-repo
+          # Перемещаем нужную версию (r487747c) в рабочую папку
+          # Если r487747c нет, берем последнюю доступную версию clang-r*
+          cp -r clang-repo/clang-r487747c/* clang/ || cp -r clang-repo/$(ls clang-repo | grep clang-r | tail -1)/* clang/
 
       - name: Build Kernel
         run: |
@@ -42,7 +42,6 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           
-          # Конфиг bangkk для Snapdragon 695
           make O=out vendor/bangkk_defconfig
           
           make -j$(nproc --all) O=out \
