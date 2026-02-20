@@ -27,14 +27,11 @@ jobs:
       - name: Setup Clang
         run: |
           mkdir -p clang
-          # Прямая ссылка на скачивание стабильного Clang r487747c
           cd clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          # Если wget падает, используем curl как запасной вариант
-          if [ ! -f clang-r487747c.tar.gz ]; then
-            curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
-          fi
-          tar -xzf clang-r487747c.tar.gz
+          # Используем curl, он более гибкий чем wget для Google Source
+          curl -L "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz" -o clang.tar.gz
+          tar -xzf clang.tar.gz
+          rm -f clang.tar.gz
           cd ..
 
       - name: Build Kernel
