@@ -16,7 +16,7 @@ jobs:
 
       - name: Clone Kernel Source
         run: |
-          # Используем правильную ссылку на репозиторий для sm6375 (holi)
+          # Раз эта ссылка работает — не трогаем её!
           git clone --depth=1 https://github.com/LineageOS/android_kernel_motorola_sm6375 -b lineage-23.2 kernel-source
 
       - name: Setup KernelSU
@@ -24,18 +24,17 @@ jobs:
           cd kernel-source
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-     - name: Setup Clang
+      - name: Setup Clang (The Most Reliable Way)
         run: |
-          # Клонируем только нужную версию Clang напрямую из репозитория Android
+          # Клонируем репозиторий с Clang напрямую, это обойдет ошибку 400
           git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main clang-repo
-          # Нам нужна именно папка с нашей версией r487747c
           mkdir -p clang
+          # Копируем только нужную версию r487747c
           cp -r clang-repo/clang-r487747c/* clang/
           rm -rf clang-repo
 
       - name: Build Kernel
         run: |
-          # Добавляем Clang в PATH
           export PATH=$(pwd)/clang/bin:$PATH
           cd kernel-source
           
@@ -51,7 +50,7 @@ jobs:
           # 1. Применяем конфиг
           make O=out vendor/holi-qgki_defconfig
           
-          # 2. Включаем KSU
+          # 2. Включаем KSU через конфиг-скрипт
           ./scripts/config --file out/.config -e KSU
           ./scripts/config --file out/.config -e OVERLAY_FS
           ./scripts/config --file out/.config -e KPROBES
@@ -59,7 +58,7 @@ jobs:
           
           make O=out olddefconfig
 
-          # 3. Сборка
+          # 3. Поехали! (Сборка)
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
@@ -69,8 +68,8 @@ jobs:
                       OBJDUMP=llvm-objdump \
                       STRIP=llvm-strip
 
-      - name: Upload Image.gz
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-LineageOS-23.2
+          name: Kernel-KSU-Success
           path: kernel-source/out/arch/arm64/boot/Image.gz
