@@ -24,18 +24,19 @@ jobs:
           cd kernel-source
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-      - name: Setup Clang (The Most Reliable Way)
+      - name: Setup Clang
         run: |
-          # Клонируем репозиторий с Clang напрямую, это обойдет ошибку 400
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main clang-repo
-          mkdir -p clang
-          # Копируем только нужную версию r487747c
-          cp -r clang-repo/clang-r487747c/* clang/
-          rm -rf clang-repo
+          # Клонируем весь репозиторий пребилтов
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main clang
+          # Проверим, что папка на месте (для логов)
+          ls -d clang/clang-r*
 
       - name: Build Kernel
         run: |
-          export PATH=$(pwd)/clang/bin:$PATH
+          # Автоматически находим папку с r487747c (или аналогичной) и добавляем в PATH
+          CLANG_DIR=$(ls -d $(pwd)/clang/clang-r*)
+          export PATH="$CLANG_DIR/bin:$PATH"
+          
           cd kernel-source
           
           export ARCH=arm64
@@ -46,19 +47,12 @@ jobs:
           export CLANG_TRIPLE=aarch64-linux-gnu-
           
           mkdir -p out
-          
-          # 1. Применяем конфиг
           make O=out vendor/holi-qgki_defconfig
           
-          # 2. Включаем KSU через конфиг-скрипт
-          ./scripts/config --file out/.config -e KSU
-          ./scripts/config --file out/.config -e OVERLAY_FS
-          ./scripts/config --file out/.config -e KPROBES
-          ./scripts/config --file out/.config -e KPROBE_EVENTS
+          ./scripts/config --file out/.config -e KSU -e OVERLAY_FS -e KPROBES -e KPROBE_EVENTS
           
           make O=out olddefconfig
 
-          # 3. Поехали! (Сборка)
           make -j$(nproc --all) O=out \
                       CC=clang \
                       LD=ld.lld \
